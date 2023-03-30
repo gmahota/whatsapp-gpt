@@ -30,6 +30,30 @@ const mpesa = new Client({
     serviceProviderCode: process.env.MPESA_SERVICEPROVIDERCODE // Service Provider Code
 });
 
+const getGPTResponse = async (name,clientText) => {
+    const options = {
+        model: "gpt-3.5-turbo", // Modelo GPT a ser usado
+        messages: [
+            {"role": "user", "content": "meu nome é " + name},
+            {"role": "user", "content": clientText}
+        ],
+        user: name,
+        temperature: 0
+        //temperature: 1, // Nível de variação das respostas geradas, 1 é o máximo
+        //max_tokens: 10000 // Quantidade de tokens (palavras) a serem retornadas pelo bot, 4000 é o máximo
+    }
+
+    try {
+        const response = await openai.createChatCompletion(options)
+        
+        let resp = response.data.choices[0].message.content;
+        
+        return `Chat GPT 🤖\n\n ${resp.trim()}`
+    } catch (e) {
+        return `❌ OpenAI Response Error: ${e.response?.data?.error?.message}`
+    }
+}
+
 const getDavinciResponse = async (clientText) => {
     const options = {
         model: "text-davinci-003", // Modelo GPT a ser usado
@@ -157,6 +181,7 @@ const generateImageVariation = async (client,message) => {
 
 const commands = async (client, message) => {
 
+    
     if (message.body === 'Hi' && message.isGroupMsg === false) {
         // await client
         //     .sendText(message.from, '👋 Hello from 🕷')
@@ -286,12 +311,13 @@ const commands = async (client, message) => {
 
     } else {
         const iaCommands = {
-            davinci3: "/bot",
+            gpt: "/bot",
+            davinci3: "/gpt",
             dalle: "/img",
             mpesa: "/mpesa",
             sticker: "/sticker",
             imageVariation: "/image",
-            imageVariation: "/slogan",
+            slogan: "/slogan",
         }
 
         let firstWord = message.text?.substring(0, message.text.indexOf(" ")) || "";
@@ -341,7 +367,25 @@ const commands = async (client, message) => {
                 }
                 //var image = await generateSticker(message, message.from);          
                 break;
-            case iaCommands.davinci3:
+            
+                case iaCommands.gpt:
+                    
+                    const name = message.sender.name;
+                    const question2 = message.text.substring(message.text.indexOf(" "));
+                    getGPTResponse(name,question2).then((response) => {
+                        /*
+                         * Faremos uma validação no message.from
+                         * para caso a gente envie um comando
+                         * a response não seja enviada para
+                         * nosso próprio número e sim para 
+                         * a pessoa ou grupo para o qual eu enviei
+                         */
+                        client.sendText(message.from === process.env.BOT_NUMBER ? message.to : message.from, response)
+                    })
+                    break;
+            
+                case iaCommands.davinci3:
+                
                 const question = message.text.substring(message.text.indexOf(" "));
                 getDavinciResponse(question).then((response) => {
                     /*
@@ -354,7 +398,7 @@ const commands = async (client, message) => {
                     client.sendText(message.from === process.env.BOT_NUMBER ? message.to : message.from, response)
                 })
                 break;
-                case iaCommands.davinci3:
+                case iaCommands.slogan:
                     const slogan = "Sugira um slogan para " + message.text.substring(message.text.indexOf(" "));
                     getDavinciResponse(slogan).then((response) => {
                         /*
