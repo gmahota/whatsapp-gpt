@@ -10,7 +10,9 @@ dotenv.config()
 
 create({
     session: 'Chat-GPT',
-    multidevice: true
+    multidevice: true,
+    headless: true,
+    logQR:true
 })
     .then((client) => start(client))
     .catch((erro) => {
@@ -179,9 +181,7 @@ const generateImageVariation = async (client,message) => {
     }
 }
 
-const commands = async (client, message) => {
-
-    
+const commands = async (client, message) => {    
     if (message.body === 'Hi' && message.isGroupMsg === false) {
         // await client
         //     .sendText(message.from, '👋 Hello from 🕷')
@@ -193,7 +193,8 @@ const commands = async (client, message) => {
         //     });
 
         await client
-            .sendText(message.from, '👋 Seja muito bem vindo a nossa loja 🕷')
+            .reply(message.from, '👋 Seja muito bem vindo a nossa loja 🕷',
+            message.id)
             .then((result) => {
                 console.log('Result: ', result); //return object success
             })
@@ -353,9 +354,6 @@ const commands = async (client, message) => {
                             message.from === process.env.BOT_NUMBER ? message.to : message.from,
                             image
                         );
-
-                        
-
                     })
                     
                 }else{
@@ -453,5 +451,5 @@ const commands = async (client, message) => {
 }
 
 async function start(client) {
-    client.onAnyMessage((message) => commands(client, message));
+    await client.onAnyMessage((message) => commands(client, message));
 }
