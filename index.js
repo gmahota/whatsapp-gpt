@@ -1,7 +1,6 @@
 import { create } from 'venom-bot'
 import * as dotenv from 'dotenv'
 import { Configuration, OpenAIApi } from "openai"
-import { Client } from '@paymentsds/mpesa'
 
 import fs from 'fs'
 //const state = require("./state.js");
@@ -12,11 +11,11 @@ create({
     session: 'Chat-GPT',
     multidevice: true,
     headless: true,
-    logQR:true
+    //logQR:true
 })
     .then((client) => start(client))
-    .catch((erro) => {
-        console.log(erro);
+    .catch((error) => {
+        console.log(error);
     });
 
 const configuration = new Configuration({
@@ -25,12 +24,6 @@ const configuration = new Configuration({
 });
 
 const openai = new OpenAIApi(configuration);
-
-const mpesa = new Client({
-    apiKey: process.env.MPESA_APIKEY,             // API Key
-    publicKey: process.env.MPESA_PUBLICKEY,          // Public Key
-    serviceProviderCode: process.env.MPESA_SERVICEPROVIDERCODE // Service Provider Code
-});
 
 const getGPTResponse = async (name,clientText) => {
     const options = {
@@ -183,24 +176,15 @@ const generateImageVariation = async (client,message) => {
 
 const commands = async (client, message) => {    
     if (message.body === 'Hi' && message.isGroupMsg === false) {
-        // await client
-        //     .sendText(message.from, '👋 Hello from 🕷')
-        //     .then((result) => {
-        //         console.log('Result: ', result); //return object success
-        //     })
-        //     .catch((erro) => {
-        //         console.error('Error when sending: ', erro); //return object error
-        //     });
-
         await client
-            .reply(message.from, '👋 Seja muito bem vindo a nossa loja 🕷',
-            message.id)
-            .then((result) => {
-                console.log('Result: ', result); //return object success
-            })
-            .catch((erro) => {
-                console.error('Error when sending: ', erro); //return object error
-            });
+        .reply(message.from, '👋 Seja muito bem vindo a nossa loja 🕷',
+        message.id)
+        .then((result) => {
+            console.log('Result: ', result); //return object success
+        })
+        .catch((erro) => {
+            console.error('Error when sending: ', erro); //return object error
+        });
 
         await client
             .sendText(message.from, 'Abaixo o nosso catalogo 👇🏿')
@@ -210,49 +194,53 @@ const commands = async (client, message) => {
             .catch((erro) => {
                 console.error('Error when sending: ', erro); //return object error
             });
+            
+        
+
+        
 
         // Send List menu
         //This function does not work for Bussines contacts
-        const listA = [
-            {
-                title: "Biblias",
-                rows: [
-                    {
-                        title: "The Love Book",
-                        description: "XXXX",
-                    },
-                    {
-                        title: "Reed Box",
-                        description: "XXXX",
-                    },
-                    {
-                        title: "Cruz",
-                        description: "XXXX",
-                    },
-                ]
-            },
-            {
-                title: "Camisetes",
-                rows: [
-                    {
-                        title: "The Truth - A Original",
-                        description: "xxxx",
-                    },
-                    {
-                        title: "Mundo",
-                        description: "xxxx",
-                    }
-                ]
-            }
-        ];
+        // const listA = [
+        //     {
+        //         title: "Biblias",
+        //         rows: [
+        //             {
+        //                 title: "The Love Book",
+        //                 description: "XXXX",
+        //             },
+        //             {
+        //                 title: "Reed Box",
+        //                 description: "XXXX",
+        //             },
+        //             {
+        //                 title: "Cruz",
+        //                 description: "XXXX",
+        //             },
+        //         ]
+        //     },
+        //     {
+        //         title: "Camisetes",
+        //         rows: [
+        //             {
+        //                 title: "The Truth - A Original",
+        //                 description: "xxxx",
+        //             },
+        //             {
+        //                 title: "Mundo",
+        //                 description: "xxxx",
+        //             }
+        //         ]
+        //     }
+        // ];
 
-        await client.sendListMenu(message.from, 'Produtos', 'Linha de Produtos', 'Catalogo', listA)
-            .then((result) => {
-                console.log('Result: ', result); //return object success
-            })
-            .catch((erro) => {
-                console.error('Error when sending: ', erro); //return object error
-            });
+        // await client.sendListMenu(message.from, 'Produtos', 'Linha de Produtos', 'Catalogo', listA)
+        //     .then((result) => {
+        //         console.log('Result: ', result); //return object success
+        //     })
+        //     .catch((erro) => {
+        //         console.error('Error when sending: ', erro); //return object error
+        //     });
 
         // Send Messages with Buttons Reply
         // const buttons = [
@@ -311,6 +299,7 @@ const commands = async (client, message) => {
         //         client.sendText(message.from === process.env.BOT_NUMBER ? message.to : message.from, firstMessage)
 
     } else {
+       
         const iaCommands = {
             gpt: "/bot",
             davinci3: "/gpt",
@@ -368,9 +357,11 @@ const commands = async (client, message) => {
             
                 case iaCommands.gpt:
                     
+                    console.log(message)
                     const name = message.sender.name;
                     const question2 = message.text.substring(message.text.indexOf(" "));
-                    getGPTResponse(name,question2).then((response) => {
+                    
+                    getGPTResponse(name,question2).then(async (response) => {
                         /*
                          * Faremos uma validação no message.from
                          * para caso a gente envie um comando
@@ -378,7 +369,7 @@ const commands = async (client, message) => {
                          * nosso próprio número e sim para 
                          * a pessoa ou grupo para o qual eu enviei
                          */
-                        client.sendText(message.from === process.env.BOT_NUMBER ? message.to : message.from, response)
+                        await client.reply(message.from === process.env.BOT_NUMBER ? message.to : message.from, response, message.id)
                     })
                     break;
             
@@ -419,37 +410,12 @@ const commands = async (client, message) => {
                         'Imagem gerada pela IA DALL-E 🤖'
                     )
                 })
-                break;
-
-            case iaCommands.mpesa:
-                const description = message.text.substring(message.text.indexOf(" "));
-
-                var texts = description.split(" ");
-
-                client.sendText(message.from === process.env.BOT_NUMBER ? message.to : message.from,
-                    "Vai Iniciar o Processo de Compra No Mpesa")
-
-                const paymentData = {
-                    from: texts[1],               // Customer MSISDN
-                    reference: Math.round(6),              // Third Party Reference
-                    transaction: Math.round(6),          // Transaction Reference
-                    amount: texts[2]                   // Amount
-                };
-
-                mpesa.receive(paymentData).then(r => {
-                    // Handle success scenario
-                    client.sendText(message.from === process.env.BOT_NUMBER ? message.to : message.from, "Compra efectuada com sucesso")
-                }).catch(e => {
-                    // Handle success scenario
-                    client.sendText(message.from === process.env.BOT_NUMBER ? message.to : message.from, e)
-                });
-                break;
-
-            
+                break;            
         }
     }
 }
 
-async function start(client) {
+async function start(client) {   
+    await client.sendText(process.env.PHONE_NUMBER2,"Ola, já estamos online")
     await client.onAnyMessage((message) => commands(client, message));
 }
