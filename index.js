@@ -10,7 +10,7 @@ dotenv.config()
 create({
     session: 'Chat-GPT',
     multidevice: true,
-    headless: true,
+    //headless: true,
     //logQR:true
 })
     .then((client) => start(client))
@@ -25,12 +25,12 @@ const configuration = new Configuration({
 
 const openai = new OpenAIApi(configuration);
 
-const getGPTResponse = async (name,clientText) => {
+const getGPTResponse = async (name, clientText) => {
     const options = {
         model: "gpt-3.5-turbo", // Modelo GPT a ser usado
         messages: [
-            {"role": "user", "content": "meu nome é " + name},
-            {"role": "user", "content": clientText}
+            { "role": "user", "content": "meu nome é " + name },
+            { "role": "user", "content": clientText }
         ],
         user: name,
         temperature: 0
@@ -39,10 +39,11 @@ const getGPTResponse = async (name,clientText) => {
     }
 
     try {
+
         const response = await openai.createChatCompletion(options)
-        
+
         let resp = response.data.choices[0].message.content;
-        
+
         return `Chat GPT 🤖\n\n ${resp.trim()}`
     } catch (e) {
         return `❌ OpenAI Response Error: ${e.response?.data?.error?.message}`
@@ -84,35 +85,35 @@ const getDalleResponse = async (clientText) => {
     }
 }
 
-const generateSticker = async (client,message) => {
-    
+const generateSticker = async (client, message) => {
+
     if (message.type === "image") {
         try {
             const mimetype = message.mediaData.mimetype.split("/");
 
             const extension =
-            mimetype[0] === "audio" ? 
-                mimetype[1].split(";")[0] : 
-                mimetype[1];
+                mimetype[0] === "audio" ?
+                    mimetype[1].split(";")[0] :
+                    mimetype[1];
 
-            var fileName =  `./content/${message.id}.${extension}`  
+            var fileName = `./content/${message.id}.${extension}`
             let buff = await client.decryptFile(message);
-                    
+
             fs.writeFileSync(
                 fileName,
                 buff,
                 'binary',
                 function (err) {
                     if (err != null) {
-                      console.log(err);
+                        console.log(err);
                     }
-                  }
+                }
             );
-            
+
             return fileName;
 
         } catch (e) {
-            return("❌ Erro ao processar imagem")
+            return ("❌ Erro ao processar imagem")
         }
     } else {
         try {
@@ -129,35 +130,35 @@ const generateSticker = async (client,message) => {
     }
 }
 
-const generateImageVariation = async (client,message) => {
-    
+const generateImageVariation = async (client, message) => {
+
     if (message.type === "image") {
         try {
             const mimetype = message.mediaData.mimetype.split("/");
 
             const extension =
-            mimetype[0] === "audio" ? 
-                mimetype[1].split(";")[0] : 
-                mimetype[1];
+                mimetype[0] === "audio" ?
+                    mimetype[1].split(";")[0] :
+                    mimetype[1];
 
-            var fileName =  `./content/${message.id}.${extension}`  
+            var fileName = `./content/${message.id}.${extension}`
             let buff = await client.decryptFile(message);
-                    
+
             fs.writeFileSync(
                 fileName,
                 buff,
                 'binary',
                 function (err) {
                     if (err != null) {
-                      console.log(err);
+                        console.log(err);
                     }
-                  }
+                }
             );
-            
+
             return fileName;
 
         } catch (e) {
-            return("❌ Erro ao processar imagem")
+            return ("❌ Erro ao processar imagem")
         }
     } else {
         try {
@@ -174,17 +175,17 @@ const generateImageVariation = async (client,message) => {
     }
 }
 
-const commands = async (client, message) => {    
+const commands = async (client, message) => {
     if (message.body === 'Hi' && message.isGroupMsg === false) {
         await client
-        .reply(message.from, '👋 Seja muito bem vindo a nossa loja 🕷',
-        message.id)
-        .then((result) => {
-            console.log('Result: ', result); //return object success
-        })
-        .catch((erro) => {
-            console.error('Error when sending: ', erro); //return object error
-        });
+            .reply(message.from, '👋 Seja muito bem vindo a nossa loja 🕷',
+                message.id)
+            .then((result) => {
+                console.log('Result: ', result); //return object success
+            })
+            .catch((erro) => {
+                console.error('Error when sending: ', erro); //return object error
+            });
 
         await client
             .sendText(message.from, 'Abaixo o nosso catalogo 👇🏿')
@@ -194,10 +195,10 @@ const commands = async (client, message) => {
             .catch((erro) => {
                 console.error('Error when sending: ', erro); //return object error
             });
-            
-        
 
-        
+
+
+
 
         // Send List menu
         //This function does not work for Bussines contacts
@@ -299,7 +300,7 @@ const commands = async (client, message) => {
         //         client.sendText(message.from === process.env.BOT_NUMBER ? message.to : message.from, firstMessage)
 
     } else {
-       
+
         const iaCommands = {
             gpt: "/bot",
             davinci3: "/gpt",
@@ -310,16 +311,14 @@ const commands = async (client, message) => {
             slogan: "/slogan",
         }
 
-        let firstWord = message.text?.substring(0, message.text.indexOf(" ")) || "";
-
+        let firstWord = message.body?.substring(0, message.body.indexOf(" ")) || "";
         switch (firstWord) {
             case iaCommands.imageVariation:
                 if (message.type === "image") {
-                    
+
                     var imageDescription = message.text.substring(message.text.indexOf(" "));
 
-                    
-                    generateImageVariation(client,message).then((image)=>{
+                    generateImageVariation(client, message).then((image) => {
                         client.sendImage(
                             message.from === process.env.BOT_NUMBER ? message.to : message.from,
                             image,
@@ -327,54 +326,70 @@ const commands = async (client, message) => {
                             'Imagem editada pela IA DALL-E 🤖'
                         );
 
-                        
+
 
                     })
-                    
+
                 }
                 //var image = await generateSticker(message, message.from);          
                 break;
 
             case iaCommands.sticker:
                 if (message.type === "image") {
-                    
-                    generateSticker(client,message).then((image)=>{
+
+                    generateSticker(client, message).then((image) => {
                         client.sendImageAsSticker(
                             message.from === process.env.BOT_NUMBER ? message.to : message.from,
                             image
                         );
                     })
-                    
-                }else{
-                    const imgUrl= message.text.substring(message.text.indexOf(" "));
+
+                } else {
+                    const imgUrl = message.text.substring(message.text.indexOf(" "));
                     await client.sendImageAsSticker(
-                        message.from === process.env.BOT_NUMBER ? message.to : message.from, 
+                        message.from === process.env.BOT_NUMBER ? message.to : message.from,
                         imgUrl
                     );
                 }
                 //var image = await generateSticker(message, message.from);          
                 break;
-            
-                case iaCommands.gpt:
-                    
-                    console.log(message)
-                    const name = message.sender.name;
-                    const question2 = message.text.substring(message.text.indexOf(" "));
-                    
-                    getGPTResponse(name,question2).then(async (response) => {
-                        /*
-                         * Faremos uma validação no message.from
-                         * para caso a gente envie um comando
-                         * a response não seja enviada para
-                         * nosso próprio número e sim para 
-                         * a pessoa ou grupo para o qual eu enviei
-                         */
+
+            case iaCommands.gpt:
+                const name = message.sender.name;
+                const question2 = message.body.substring(message.body.indexOf(" "));
+
+                getGPTResponse(name, question2).then( async (response) => {
+                    /*
+                        * Faremos uma validação no message.from
+                        * para caso a gente envie um comando
+                        * a response não seja enviada para
+                        * nosso próprio número e sim para 
+                        * a pessoa ou grupo para o qual eu enviei
+                        */
                         await client.reply(message.from === process.env.BOT_NUMBER ? message.to : message.from, response, message.id)
-                    })
-                    break;
-            
-                case iaCommands.davinci3:
-                
+
+                       await fetch("http://localhost:3333/messages/create", {
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        method: "POST",
+                        body: JSON.stringify({
+                            name: name,
+                            cellphone: message.from,
+                            text: message.to,
+                            message: question2,
+                            reply: response
+
+                        }),
+                    });
+
+
+                })
+                break;
+
+            case iaCommands.davinci3:
+
                 const question = message.text.substring(message.text.indexOf(" "));
                 getDavinciResponse(question).then((response) => {
                     /*
@@ -387,19 +402,19 @@ const commands = async (client, message) => {
                     client.sendText(message.from === process.env.BOT_NUMBER ? message.to : message.from, response)
                 })
                 break;
-                case iaCommands.slogan:
-                    const slogan = "Sugira um slogan para " + message.text.substring(message.text.indexOf(" "));
-                    getDavinciResponse(slogan).then((response) => {
-                        /*
-                         * Faremos uma validação no message.from
-                         * para caso a gente envie um comando
-                         * a response não seja enviada para
-                         * nosso próprio número e sim para 
-                         * a pessoa ou grupo para o qual eu enviei
-                         */
-                        client.sendText(message.from === process.env.BOT_NUMBER ? message.to : message.from, response)
-                    })
-                    break;
+            case iaCommands.slogan:
+                const slogan = "Sugira um slogan para " + message.text.substring(message.text.indexOf(" "));
+                getDavinciResponse(slogan).then((response) => {
+                    /*
+                     * Faremos uma validação no message.from
+                     * para caso a gente envie um comando
+                     * a response não seja enviada para
+                     * nosso próprio número e sim para 
+                     * a pessoa ou grupo para o qual eu enviei
+                     */
+                    client.sendText(message.from === process.env.BOT_NUMBER ? message.to : message.from, response)
+                })
+                break;
             case iaCommands.dalle:
                 const imgDescription = message.text.substring(message.text.indexOf(" "));
                 getDalleResponse(imgDescription, message).then((imgUrl) => {
@@ -410,12 +425,18 @@ const commands = async (client, message) => {
                         'Imagem gerada pela IA DALL-E 🤖'
                     )
                 })
-                break;            
+                break;
         }
     }
 }
 
-async function start(client) {   
-    await client.sendText(process.env.PHONE_NUMBER2,"Ola, já estamos online")
+async function start(client) {
     await client.onAnyMessage((message) => commands(client, message));
+    await client.sendText(process.env.PHONE_NUMBER2, "Ola, já estamos online")
+
+    //var msg = await getGPTResponse("Grupo de Testes","Me envia uma mensagem simples para o whatsapp um grupo de amigos jovens que estamos a testar o Chat-GPT, a avisar que ja estas online, e uma mensaguem motivacional sem mensionar que é motivacional, e a avisar que estamos prontos para fazer a assistencia virtual, durante o periodo das 8:30 as 17:30. O texto deve conter paragrafos")
+    var msg = "Ola, já estamos online"
+    //await client.sendText(process.env.GROUP_ID, msg);
+
+    
 }
