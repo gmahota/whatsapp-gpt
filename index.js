@@ -2,7 +2,10 @@ import { create } from 'venom-bot'
 import * as dotenv from 'dotenv'
 import { Configuration, OpenAIApi } from "openai"
 
+
 import fs from 'fs'
+
+import axios from 'axios';
 //const state = require("./state.js");
 
 dotenv.config()
@@ -25,13 +28,43 @@ const configuration = new Configuration({
 
 const openai = new OpenAIApi(configuration);
 
-const getGPTResponse = async (name, clientText) => {
+const getMessages = async (cellphone, from) => {
+
+    var messages = [];
+    let msg;
+
+    from = from ||cellphone
+
+    if(process.env.STORE_NUMBER === cellphone){
+        from = cellphone   
+    }
+
+    await axios.get(`${process.env.API_URL}/messages/${cellphone}/${from}`).then(response => {
+        msg = response.data.messages;
+    });
+
+    console.log(msg)
+    
+    msg = msg?.forEach((item) => {
+        messages.push({
+            "role": "user", "content": item.message
+        })
+        messages.push({
+            "role": "assistant", "content": item.reply
+        })
+    }
+    )
+    return messages
+}
+
+const getGPTResponse = async (name, clientText,messages) => {
+
+    messages.unshift({ "role": "user", "content": "meu nome é " + name })
+    messages.push({ "role": "user", "content": clientText })
+
     const options = {
         model: "gpt-3.5-turbo", // Modelo GPT a ser usado
-        messages: [
-            { "role": "user", "content": "meu nome é " + name },
-            { "role": "user", "content": clientText }
-        ],
+        messages: messages,
         user: name,
         temperature: 0
         //temperature: 1, // Nível de variação das respostas geradas, 1 é o máximo
@@ -358,7 +391,9 @@ const commands = async (client, message) => {
                 const name = message.sender.name;
                 const question2 = message.body.substring(message.body.indexOf(" "));
 
-                getGPTResponse(name, question2).then( async (response) => {
+                var msg = await getMessages(message.from, message.author)
+                    console.log(msg)
+                getGPTResponse(name, question2,msg).then(async (response) => {
                     /*
                         * Faremos uma validação no message.from
                         * para caso a gente envie um comando
@@ -366,25 +401,28 @@ const commands = async (client, message) => {
                         * nosso próprio número e sim para 
                         * a pessoa ou grupo para o qual eu enviei
                         */
-                        await client.reply(message.from === process.env.BOT_NUMBER ? message.to : message.from, response, message.id)
+                    
 
-                       await fetch("http://localhost:3333/messages/create", {
-                        headers: {
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json'
-                        },
-                        method: "POST",
-                        body: JSON.stringify({
-                            name: name,
-                            cellphone: message.from,
-                            text: message.to,
-                            message: question2,
-                            reply: response
+                    await client.reply(message.from === process.env.BOT_NUMBER ? message.to : message.from, response, message.id)
+                    
+                    var cellphone = message.author
+                    
+                    if(process.env.STORE_NUMBER === message.from){
+                        cellphone = message.from
+                    }
 
-                        }),
+                    await axios.post(`${process.env.API_URL}/messages/create`, {
+                        name: name,
+                        cellphone: message.from,
+                        text: cellphone ,//message.author,
+                        message: question2,
+                        reply: response.replace("Chat GPT 🤖\n\n ", ""),
+                        json: message
+                    }).then(function (response) {
+
+                    }).catch(function (error) {
+                        console.log(error);
                     });
-
-
                 })
                 break;
 
@@ -432,11 +470,12 @@ const commands = async (client, message) => {
 
 async function start(client) {
     await client.onAnyMessage((message) => commands(client, message));
+
     await client.sendText(process.env.PHONE_NUMBER2, "Ola, já estamos online")
 
     //var msg = await getGPTResponse("Grupo de Testes","Me envia uma mensagem simples para o whatsapp um grupo de amigos jovens que estamos a testar o Chat-GPT, a avisar que ja estas online, e uma mensaguem motivacional sem mensionar que é motivacional, e a avisar que estamos prontos para fazer a assistencia virtual, durante o periodo das 8:30 as 17:30. O texto deve conter paragrafos")
     var msg = "Ola, já estamos online"
-    //await client.sendText(process.env.GROUP_ID, msg);
+    await client.sendText(process.env.GROUP_ID, msg);
 
-    
+
 }
