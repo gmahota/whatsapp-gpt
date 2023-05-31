@@ -57,6 +57,35 @@ const getMessages = async (cellphone, from) => {
     return messages
 }
 
+const deleteMessages = async (cellphone, from) => {
+
+    var messages = [];
+    let msg;
+
+    from = from ||cellphone
+
+    if(process.env.STORE_NUMBER === cellphone){
+        from = cellphone   
+    }
+
+    await axios.post(
+        `${process.env.API_URL}/messages/${cellphone}/${from}/reset`
+        ).then(response => {
+        msg = response.data.messages;
+    });
+    
+    msg = msg?.forEach((item) => {
+        messages.push({
+            "role": "user", "content": item.message
+        })
+        messages.push({
+            "role": "assistant", "content": item.reply
+        })
+    }
+    )
+    return "Apagado com Sucesso!"
+}
+
 const getGPTResponse = async (name, clientText,messages) => {
 
     messages.unshift({ "role": "user", "content": "meu nome é " + name })
@@ -342,9 +371,19 @@ const commands = async (client, message) => {
             sticker: "/sticker",
             imageVariation: "/image",
             slogan: "/slogan",
+            reset: "/bot reset",
         }
 
+        if(iaCommands.reset===message.body){
+            
+            var msg = await deleteMessages(message.from, message.author)
+            
+            await client.reply(message.from === process.env.BOT_NUMBER ? message.to : message.from, msg, message.id)
+                    
+        }
+            
         let firstWord = message.body?.substring(0, message.body.indexOf(" ")) || "";
+        
         switch (firstWord) {
             case iaCommands.imageVariation:
                 if (message.type === "image") {
@@ -358,9 +397,6 @@ const commands = async (client, message) => {
                             imageDescription,
                             'Imagem editada pela IA DALL-E 🤖'
                         );
-
-
-
                     })
 
                 }
@@ -392,8 +428,8 @@ const commands = async (client, message) => {
                 const question2 = message.body.substring(message.body.indexOf(" "));
 
                 var msg = await getMessages(message.from, message.author)
-                    console.log(msg)
-                getGPTResponse(name, question2,msg).then(async (response) => {
+                
+                await getGPTResponse(name, question2,msg).then(async (response) => {
                     /*
                         * Faremos uma validação no message.from
                         * para caso a gente envie um comando
