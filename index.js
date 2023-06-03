@@ -13,7 +13,7 @@ dotenv.config()
 create({
     session: 'Chat-GPT',
     multidevice: true,
-    //headless: true,
+    headless: false,
     //logQR:true
 })
     .then((client) => start(client))
