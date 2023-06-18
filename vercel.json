@@ -1,3 +1,10 @@
 {
-   "rewrites": [{ "source": "/api/(.*)", "destination": "/api" }]
+    "version": 2,
+    "name": "whatsapp-gpt",
+    "builds": [
+       { "src": "index.js", "use": "@vercel/node" }
+    ],
+    "routes": [
+       { "src": "/(.*)", "dest": "/index.js" }
+    ]
  }
