@@ -13,7 +13,7 @@ dotenv.config()
 create({
     session: 'Chat-GPT',
     multidevice: true,
-    headless: false,
+    headless: true,
     //logQR:true
 })
     .then((client) => start(client))
@@ -68,21 +68,11 @@ const deleteMessages = async (cellphone, from) => {
         from = cellphone   
     }
 
-    await axios.post(
-        `${process.env.API_URL}/messages/${cellphone}/${from}/reset`
-        ).then(response => {
-        msg = response.data.messages;
+    await axios.post(`${process.env.API_URL}/messages/${cellphone}/${from}/reset`,{
+        cellphone,
+        from
     });
     
-    msg = msg?.forEach((item) => {
-        messages.push({
-            "role": "user", "content": item.message
-        })
-        messages.push({
-            "role": "assistant", "content": item.reply
-        })
-    }
-    )
     return "Apagado com Sucesso!"
 }
 
@@ -92,7 +82,7 @@ const getGPTResponse = async (name, clientText,messages) => {
     messages.push({ "role": "user", "content": clientText })
 
     const options = {
-        model: "gpt-3.5-turbo", // Modelo GPT a ser usado
+        model: "gpt-3.5-turbo-0613", // Modelo GPT a ser usado
         messages: messages,
         user: name,
         temperature: 0
@@ -379,8 +369,9 @@ const commands = async (client, message) => {
             var msg = await deleteMessages(message.from, message.author)
             
             await client.reply(message.from === process.env.BOT_NUMBER ? message.to : message.from, msg, message.id)
-                    
+            return ;            
         }
+
             
         let firstWord = message.body?.substring(0, message.body.indexOf(" ")) || "";
         
