@@ -1,6 +1,7 @@
 import { create } from 'venom-bot'
 import * as dotenv from 'dotenv'
-import { Configuration, OpenAIApi } from "openai"
+import OpenAI from "openai"
+import request from 'request';
 
 
 import fs from 'fs'
@@ -13,37 +14,37 @@ dotenv.config()
 create({
     session: 'Chat-GPT',
     multidevice: true,
-    headless: true,
-    //logQR:true
+    headless: 'new'
 })
     .then((client) => start(client))
     .catch((error) => {
         console.log(error);
     });
 
-const configuration = new Configuration({
+// const configuration = new Configuration({
+//     organization: process.env.ORGANIZATION_ID,
+//     apiKey: process.env.OPENAI_KEY,
+// });
+
+const openai = new OpenAI({
     organization: process.env.ORGANIZATION_ID,
     apiKey: process.env.OPENAI_KEY,
 });
-
-const openai = new OpenAIApi(configuration);
 
 const getMessages = async (cellphone, from) => {
 
     var messages = [];
     let msg;
 
-    from = from ||cellphone
+    from = from || cellphone
 
-    if(process.env.STORE_NUMBER === cellphone){
-        from = cellphone   
+    if (process.env.STORE_NUMBER === cellphone) {
+        from = cellphone
     }
 
     await axios.get(`${process.env.API_URL}/messages/${cellphone}/${from}`).then(response => {
         msg = response.data.messages;
     });
-
-    console.log(msg)
     
     msg = msg?.forEach((item) => {
         messages.push({
@@ -62,27 +63,27 @@ const deleteMessages = async (cellphone, from) => {
     var messages = [];
     let msg;
 
-    from = from ||cellphone
+    from = from || cellphone
 
-    if(process.env.STORE_NUMBER === cellphone){
-        from = cellphone   
+    if (process.env.STORE_NUMBER === cellphone) {
+        from = cellphone
     }
 
-    await axios.post(`${process.env.API_URL}/messages/${cellphone}/${from}/reset`,{
+    await axios.post(`${process.env.API_URL}/messages/${cellphone}/${from}/reset`, {
         cellphone,
         from
     });
-    
+
     return "Apagado com Sucesso!"
 }
 
-const getGPTResponse = async (name, clientText,messages) => {
+const getGPTResponse = async (name, clientText, messages) => {
 
     messages.unshift({ "role": "user", "content": "meu nome é " + name })
     messages.push({ "role": "user", "content": clientText })
 
     const options = {
-        model: "gpt-3.5-turbo-0613", // Modelo GPT a ser usado
+        model: "gpt-4-0613", // Modelo GPT a ser usado
         messages: messages,
         user: name,
         temperature: 0
@@ -92,12 +93,15 @@ const getGPTResponse = async (name, clientText,messages) => {
 
     try {
 
-        const response = await openai.createChatCompletion(options)
+        console.log(messages)
 
-        let resp = response.data.choices[0].message.content;
+        const chatCompletion  = await openai.chat.completions.create(options)
+        
+        let resp = chatCompletion.choices[0].message.content;
 
         return `Chat GPT 🤖\n\n ${resp.trim()}`
     } catch (e) {
+        console.log(e)
         return `❌ OpenAI Response Error: ${e.response?.data?.error?.message}`
     }
 }
@@ -135,6 +139,80 @@ const getDalleResponse = async (clientText) => {
     } catch (e) {
         return `❌ OpenAI Response Error: ${e?.response?.data?.error?.message || e}`
     }
+}
+
+const getGptImageResponse = async (clientText) => {
+    const options = {
+        prompt: clientText, // Descrição da imagem
+        n: 1, // Número de imagens a serem geradas
+        size: "1024x1024", // Tamanho da imagem
+    }
+
+    try {
+        const response = await openai.images.generate(options);
+        console.log(response.data)
+        return response.data[0].url
+    } catch (e) {
+        return `❌ OpenAI Response Error: ${e?.response?.data?.error?.message || e}`
+    }
+}
+
+const getStableDifFusion = async(clientPrompt) =>{
+    
+    var imgUrl;
+
+    var myHeaders = new Headers();
+    myHeaders.append("Content-Type", "application/json");
+    myHeaders.append("Access-Control-Allow-Origin", "*");
+    myHeaders.append("Access-Control-Allow-Headers", "Content-Type");
+    myHeaders.append("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    myHeaders.append("Accept", "application/json");
+    myHeaders.append("Authorization",`Bearer ${process.env.StableDifFusion_API_URL}`)
+
+    let axiosConfig = {
+        headers: {
+            'Content-Type': 'application/json;charset=UTF-8',
+            "Access-Control-Allow-Origin": "*",
+            "Accept": "application/json"
+        }
+      }
+
+    var raw = JSON.stringify({
+        "key": process.env.StableDifFusion_API_URL,
+        "prompt": clientPrompt,
+        "negative_prompt": null,
+        "width": "512",
+        "height": "512",
+        "samples": "1",
+        "num_inference_steps": "20",
+        "seed": null,
+        "guidance_scale": 7.5,
+        "safety_checker": "yes",
+        "multi_lingual": "no",
+        "panorama": "no",
+        "self_attention": "no",
+        "upscale": "no",
+        "embeddings_model": null,
+        "webhook": null,
+        "track_id": null
+      });
+
+      var requestOptions = {
+        method: 'POST',
+        headers: myHeaders,
+        body: raw,
+        redirect: 'follow'
+        };
+
+    await axios.post('https://stablediffusionapi.com/api/v3/text2img',raw,axiosConfig )
+    .then(function (response) {
+        imgUrl = response.data.output[0];
+
+    }).catch(function (error) {
+        console.log(error);
+    });
+
+    return imgUrl
 }
 
 const generateSticker = async (client, message) => {
@@ -356,7 +434,8 @@ const commands = async (client, message) => {
         const iaCommands = {
             gpt: "/bot",
             davinci3: "/gpt",
-            dalle: "/img",
+            gptImage: "/img",
+            dalle: "/dalle",
             mpesa: "/mpesa",
             sticker: "/sticker",
             imageVariation: "/image",
@@ -364,17 +443,17 @@ const commands = async (client, message) => {
             reset: "/bot reset",
         }
 
-        if(iaCommands.reset===message.body){
-            
+        if (iaCommands.reset === message.body) {
+
             var msg = await deleteMessages(message.from, message.author)
-            
+
             await client.reply(message.from === process.env.BOT_NUMBER ? message.to : message.from, msg, message.id)
-            return ;            
+            return;
         }
 
-            
+
         let firstWord = message.body?.substring(0, message.body.indexOf(" ")) || "";
-        
+
         switch (firstWord) {
             case iaCommands.imageVariation:
                 if (message.type === "image") {
@@ -419,8 +498,8 @@ const commands = async (client, message) => {
                 const question2 = message.body.substring(message.body.indexOf(" "));
 
                 var msg = await getMessages(message.from, message.author)
-                
-                await getGPTResponse(name, question2,msg).then(async (response) => {
+
+                await getGPTResponse(name, question2, msg).then(async (response) => {
                     /*
                         * Faremos uma validação no message.from
                         * para caso a gente envie um comando
@@ -428,20 +507,19 @@ const commands = async (client, message) => {
                         * nosso próprio número e sim para 
                         * a pessoa ou grupo para o qual eu enviei
                         */
-                    
 
                     await client.reply(message.from === process.env.BOT_NUMBER ? message.to : message.from, response, message.id)
-                    
+
                     var cellphone = message.author
-                    
-                    if(process.env.STORE_NUMBER === message.from){
+
+                    if (process.env.STORE_NUMBER === message.from) {
                         cellphone = message.from
                     }
 
                     await axios.post(`${process.env.API_URL}/messages/create`, {
                         name: name,
                         cellphone: message.from,
-                        text: cellphone ,//message.author,
+                        text: cellphone,//message.author,
                         message: question2,
                         reply: response.replace("Chat GPT 🤖\n\n ", ""),
                         json: message
@@ -480,6 +558,27 @@ const commands = async (client, message) => {
                     client.sendText(message.from === process.env.BOT_NUMBER ? message.to : message.from, response)
                 })
                 break;
+
+            case iaCommands.gptImage:
+                const imgDescriptionGpt = message.body.substring(message.body.indexOf(" "));
+
+                var cellphone = message.author
+
+                    if (process.env.STORE_NUMBER === message.from) {
+                        cellphone = message.from
+                    }
+
+                getStableDifFusion(imgDescriptionGpt).then((imgUrl) => {
+                    console.log(imgUrl)
+                    client.sendImage(
+                        message.from === process.env.BOT_NUMBER ? message.to : message.from,
+                        imgUrl,
+                        "gpt1",
+                        `Receba ${cellphone}`
+                    )
+                })
+                break;
+
             case iaCommands.dalle:
                 const imgDescription = message.text.substring(message.text.indexOf(" "));
                 getDalleResponse(imgDescription, message).then((imgUrl) => {
@@ -503,6 +602,6 @@ async function start(client) {
     //var msg = await getGPTResponse("Grupo de Testes","Me envia uma mensagem simples para o whatsapp um grupo de amigos jovens que estamos a testar o Chat-GPT, a avisar que ja estas online, e uma mensaguem motivacional sem mensionar que é motivacional, e a avisar que estamos prontos para fazer a assistencia virtual, durante o periodo das 8:30 as 17:30. O texto deve conter paragrafos")
     var msg = "Ola, já estamos online"
     await client.sendText(process.env.GROUP_ID, msg);
-
+    console.log(msg)
 
 }
