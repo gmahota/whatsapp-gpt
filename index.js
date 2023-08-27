@@ -45,7 +45,7 @@ const getMessages = async (cellphone, from) => {
     await axios.get(`${process.env.API_URL}/messages/${cellphone}/${from}`).then(response => {
         msg = response.data.messages;
     });
-    
+
     msg = msg?.forEach((item) => {
         messages.push({
             "role": "user", "content": item.message
@@ -95,8 +95,8 @@ const getGPTResponse = async (name, clientText, messages) => {
 
         console.log(messages)
 
-        const chatCompletion  = await openai.chat.completions.create(options)
-        
+        const chatCompletion = await openai.chat.completions.create(options)
+
         let resp = chatCompletion.choices[0].message.content;
 
         return `Chat GPT 🤖\n\n ${resp.trim()}`
@@ -157,8 +157,8 @@ const getGptImageResponse = async (clientText) => {
     }
 }
 
-const getStableDifFusion = async(clientPrompt) =>{
-    
+const getStableDifFusion = async (clientPrompt) => {
+
     var imgUrl;
 
     var myHeaders = new Headers();
@@ -167,7 +167,7 @@ const getStableDifFusion = async(clientPrompt) =>{
     myHeaders.append("Access-Control-Allow-Headers", "Content-Type");
     myHeaders.append("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
     myHeaders.append("Accept", "application/json");
-    myHeaders.append("Authorization",`Bearer ${process.env.StableDifFusion_API_URL}`)
+    myHeaders.append("Authorization", `Bearer ${process.env.StableDifFusion_API_URL}`)
 
     let axiosConfig = {
         headers: {
@@ -175,7 +175,7 @@ const getStableDifFusion = async(clientPrompt) =>{
             "Access-Control-Allow-Origin": "*",
             "Accept": "application/json"
         }
-      }
+    }
 
     var raw = JSON.stringify({
         "key": process.env.StableDifFusion_API_URL,
@@ -195,22 +195,22 @@ const getStableDifFusion = async(clientPrompt) =>{
         "embeddings_model": null,
         "webhook": null,
         "track_id": null
-      });
+    });
 
-      var requestOptions = {
+    var requestOptions = {
         method: 'POST',
         headers: myHeaders,
         body: raw,
         redirect: 'follow'
-        };
+    };
 
-    await axios.post('https://stablediffusionapi.com/api/v3/text2img',raw,axiosConfig )
-    .then(function (response) {
-        imgUrl = response.data.output[0];
+    await axios.post('https://stablediffusionapi.com/api/v3/text2img', raw, axiosConfig)
+        .then(function (response) {
+            imgUrl = response.data.output[0];
 
-    }).catch(function (error) {
-        console.log(error);
-    });
+        }).catch(function (error) {
+            console.log(error);
+        });
 
     return imgUrl
 }
@@ -497,7 +497,28 @@ const commands = async (client, message) => {
                 const name = message.sender.name;
                 const question2 = message.body.substring(message.body.indexOf(" "));
 
+                await axios.post(`${process.env.API_URL}/message/create`, {
+                    name: name,
+                    cellphone: message.from,
+                    text: cellphone,//message.author,
+                    message: question2,
+                    reply: " ",
+                    json: message
+                }).then(function (response) {
+
+                }).catch(function (error) {
+                    console.log(error);
+                });
+
                 var msg = await getMessages(message.from, message.author)
+
+                var cellphone = message.author
+
+                if (process.env.STORE_NUMBER === message.from) {
+                    cellphone = message.from
+                }
+
+                
 
                 await getGPTResponse(name, question2, msg).then(async (response) => {
                     /*
@@ -508,26 +529,11 @@ const commands = async (client, message) => {
                         * a pessoa ou grupo para o qual eu enviei
                         */
 
-                    await client.reply(message.from === process.env.BOT_NUMBER ? message.to : message.from, response, message.id)
-
-                    var cellphone = message.author
-
-                    if (process.env.STORE_NUMBER === message.from) {
-                        cellphone = message.from
-                    }
-
-                    await axios.post(`${process.env.API_URL}/messages/create`, {
-                        name: name,
-                        cellphone: message.from,
-                        text: cellphone,//message.author,
-                        message: question2,
-                        reply: response.replace("Chat GPT 🤖\n\n ", ""),
-                        json: message
-                    }).then(function (response) {
-
-                    }).catch(function (error) {
-                        console.log(error);
-                    });
+                    await client.reply(
+                        message.from === process.env.BOT_NUMBER ? message.to : message.from,
+                        response,
+                        message.id
+                    )
                 })
                 break;
 
@@ -564,9 +570,9 @@ const commands = async (client, message) => {
 
                 var cellphone = message.author
 
-                    if (process.env.STORE_NUMBER === message.from) {
-                        cellphone = message.from
-                    }
+                if (process.env.STORE_NUMBER === message.from) {
+                    cellphone = message.from
+                }
 
                 getStableDifFusion(imgDescriptionGpt).then((imgUrl) => {
                     console.log(imgUrl)
